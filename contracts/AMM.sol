@@ -16,6 +16,17 @@ contract AMM {
 	mapping(address => uint256) public shares;
 	uint256 constant PRECISION = 10**18;
 
+	event Swap(
+		address user,
+		address tokenGive,
+		uint256 tokenGiveAmount,
+		address tokenGet,
+		uint256 tokenGetAmount,
+		uint256 token1Balance,
+		uint256 token2Balance,
+		uint256 timestamp
+	);
+
 	constructor(Token _token1, Token _token2) {
 		token1 = _token1;
 		token2 = _token2;
@@ -72,6 +83,59 @@ contract AMM {
 		returns(uint256 token1Amount) 
 	{
 		token1Amount = (token1Balance * _token2Amount) / token2Balance;
+	}
+
+	function calculateToken1Swap(uint256 _token1Amount)
+		public view
+		returns (uint256 token2Amount)
+	{
+		uint256 token1After = token1Balance + _token1Amount;
+		uint256 token2After = K / token1After;
+		token2Amount = token2Balance - token2After;
+
+		// don't let pool go to 0
+		if(token2Amount == token2Balance) {
+			token2Amount--;
+		}
+
+		require(token2Amount < token2Balance, "swap cannot exceed pool balance");
+	}
+
+	function swapToken1(uint256 _token1Amount)
+		external
+		returns(uint256 token2Amount)
+	{
+		// calculate token 2 amount
+		token2Amount = calculateToken1Swap(_token1Amount);
+
+		// do swap
+		// transfer tokens from user wallet to contract
+		token1.transferFrom(msg.sender, address(this), _token1Amount);
+		// update token 1 balance in the contract
+		token1Balance += _token1Amount;
+		// update token 2 balance in the contract
+		token2Balance -= token2Amount;
+		// transfer token 2 tokens from contract to user wallet
+		token2.transfer(msg.sender, token2Amount);
+
+		// emit event
+		emit Swap(
+			msg.sender,
+			address(token1),
+			_token1Amount,
+			address(token2),
+			token2Amount,
+			token1Balance,
+			token2Balance,
+			block.timestamp
+		);
+	}
+
+	function swapToken2(uint256 _token2Amount)
+		external
+		returns(uint256 token1Amount)
+	{
+
 	}
 
 }
