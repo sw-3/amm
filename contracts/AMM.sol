@@ -101,6 +101,22 @@ contract AMM {
 		require(token2Amount < token2Balance, "swap cannot exceed pool balance");
 	}
 
+	function calculateToken2Swap(uint256 _token2Amount)
+		public view
+		returns (uint256 token1Amount)
+	{
+		uint256 token2After = token2Balance + _token2Amount;
+		uint256 token1After = K / token2After;
+		token1Amount = token1Balance - token1After;
+
+		// don't let pool go to 0
+		if(token1Amount == token1Balance) {
+			token1Amount--;
+		}
+
+		require(token1Amount < token1Balance, "swap cannot exceed pool balance");
+	}
+
 	function swapToken1(uint256 _token1Amount)
 		external
 		returns(uint256 token2Amount)
@@ -135,7 +151,68 @@ contract AMM {
 		external
 		returns(uint256 token1Amount)
 	{
+		// calculate token 1 amount
+		token1Amount = calculateToken2Swap(_token2Amount);
 
+		// do swap
+		// transfer tokens from user wallet to contract
+		token2.transferFrom(msg.sender, address(this), _token2Amount);
+		// update token 1 balance in the contract
+		token2Balance += _token2Amount;
+		// update token 2 balance in the contract
+		token1Balance -= token1Amount;
+		// transfer token 2 tokens from contract to user wallet
+		token1.transfer(msg.sender, token1Amount);
+
+		// emit event
+		emit Swap(
+			msg.sender,
+			address(token2),
+			_token2Amount,
+			address(token1),
+			token1Amount,
+			token1Balance,
+			token2Balance,
+			block.timestamp
+		);
+	}
+
+	// Determine how many tokens will be withdrawn
+	function calculateWithdrawAmount(uint256 _share)
+		public view
+		returns(uint256 token1Amount, uint256 token2Amount)
+	{
+		require(_share <= totalShares, "must be less than total shares");
+		token1Amount = (_share * token1Balance) / totalShares;
+		token2Amount = (_share * token2Balance) / totalShares;
+	}
+
+	// Removes liquidity from the pool
+	function removeLiquidity(uint256 _share)
+		external
+		returns(uint256 token1Amount, uint256 token2Amount)
+	{
+		require(
+			_share <= shares[msg.sender],
+			"cannot withdraw more shares than you have"
+		);
+
+		(token1Amount, token2Amount) = calculateWithdrawAmount(_share);
+
+		// update user shares
+		shares[msg.sender] -= _share;
+		totalShares -= _share;
+
+		// update balances and K
+		token1Balance -= token1Amount;
+		token2Balance -= token2Amount;
+		K = token1Balance * token2Balance;
+
+		// transfer tokens back to user
+		token1.transfer(msg.sender, token1Amount);
+		token2.transfer(msg.sender, token2Amount);
+
+		// emit Event as homework
 	}
 
 }
