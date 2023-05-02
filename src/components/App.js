@@ -11,15 +11,10 @@ import Loading from './Loading';
 import {
   loadProvider,
   loadNetwork,
-  loadAccount
+  loadAccount,
+  loadTokens,
+  loadAMM
 } from '../store/interactions'
-
-// ABIs: Import your contract ABIs here
-// import TOKEN_ABI from '../abis/Token.json'
-
-// Config: Import your network config here
-// import config from '../config.json';
-
 
 function App() {
 
@@ -33,6 +28,12 @@ function App() {
 
     // Fetch accounts
     const account = await loadAccount(dispatch)
+
+    // initiate contracts
+    await loadTokens(provider, chainId, dispatch)
+    await loadAMM(provider, chainId, dispatch)
+
+    // load balances
 
   }
 
