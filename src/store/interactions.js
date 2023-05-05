@@ -18,6 +18,9 @@ import {
   depositRequest,
   depositSuccess,
   depositFail,
+  withdrawRequest,
+  withdrawSuccess,
+  withdrawFail,
   swapRequest,
   swapSuccess,
   swapFail
@@ -81,7 +84,6 @@ export const loadBalances = async (amm, tokens, account, dispatch) => {
   dispatch(sharesLoaded(ethers.utils.formatUnits(shares.toString(), 'ether')))
 }
 
-
 // ----------------------------------------------------------------
 // ADD LIQUIDITY
 export const addLiquidity = async (provider, amm, tokens, amounts, dispatch) => {
@@ -109,6 +111,22 @@ export const addLiquidity = async (provider, amm, tokens, amounts, dispatch) => 
 
 }
 
+// ----------------------------------------------------------------
+// REMOVE LIQUIDITY
+export const removeLiquidity = async (provider, amm, shares, dispatch) => {
+  try {
+    dispatch(withdrawRequest())
+
+    const signer = await provider.getSigner()
+
+    let transaction = await amm.connect(signer).removeLiquidity(shares)
+    await transaction.wait()
+
+    dispatch(withdrawSuccess(transaction.hash))
+  } catch (error) {
+    dispatch(withdrawFail())
+  }
+}
 
 // -----------------------------------------------------------------
 // SWAP
